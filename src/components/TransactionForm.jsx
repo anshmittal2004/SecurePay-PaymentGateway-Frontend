@@ -20,6 +20,22 @@ function TransactionForm({ onTransaction }) {
     setCardType(detectCardType(formatted));
   };
 
+  // Fetch updated transactions from backend
+  const fetchTransactions = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions`);
+      if (response.ok) {
+        const transactions = await response.json();
+        // Update parent component with new transactions
+        if (onTransaction) {
+          onTransaction({ type: 'refresh', transactions });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateCardNumber(cardNumber) || !validateName(name) || !validatePhoneNumber(phoneNumber) || !validateAmount(amount)) {
       setMessage('Please fill in all fields correctly.');
@@ -31,30 +47,58 @@ function TransactionForm({ onTransaction }) {
 
     try {
       console.log('Sending to backend:', { cardNumber, name, phoneNumber, amount }); // Debug
-const response = await fetch(`${process.env.REACT_APP_API_URL}/api/authorize`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    card_number: cardNumber.replace(/\s/g, ''), // Remove spaces
-    amount: parseFloat(amount)  // Convert to number
-  })
-});
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          card_number: cardNumber.replace(/\s/g, ''), // Remove spaces
+          amount: parseFloat(amount)  // Convert to number
+        })
+      });
+      
       const data = await response.json();
-      onTransaction(data);
-      setLastTransaction(data);
-      setMessage(`Transaction ${data.status}! ID: ${data.id}`);
+      
+      // Create complete transaction object for receipt
+      const completeTransaction = {
+        ...data,
+        name: name,
+        phone_number: phoneNumber,
+        card_number: cardNumber,
+        card_type: cardType,
+        amount: parseFloat(amount),
+        timestamp: new Date().toISOString(),
+        card_hash: data.card_hash || 'N/A'
+      };
+      
+      setLastTransaction(completeTransaction);
+      setMessage(`Transaction ${data.status}! ID: ${data.transaction_id || data.id}`);
+      
+      // Notify parent component about the transaction
+      if (onTransaction) {
+        onTransaction(completeTransaction);
+      }
+      
+      // Fetch updated transactions list from backend
+      setTimeout(() => {
+        fetchTransactions();
+      }, 1000); // Small delay to ensure backend is updated
+      
+      // Clear form if success
+      if (data.status === 'success') {
+        setTimeout(() => {
+          setCardNumber('');
+          setName('');
+          setPhoneNumber('');
+          setAmount('');
+          setCardType('Unknown');
+        }, 2000); // Clear after 2 seconds
+      }
+      
     } catch (error) {
       console.error('Transaction error:', error);
       setMessage('Transaction failed. Check backend or network.');
     } finally {
       setIsProcessing(false);
-      if (lastTransaction?.status === 'success') {
-        setCardNumber('');
-        setName('');
-        setPhoneNumber('');
-        setAmount('');
-        setCardType('Unknown');
-      }
     }
   };
 
@@ -74,7 +118,7 @@ const response = await fetch(`${process.env.REACT_APP_API_URL}/api/authorize`, {
 
     doc.setFontSize(12);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Transaction ID: ${lastTransaction.id}`, 105, 30, { align: 'center' });
+    doc.text(`Transaction ID: ${lastTransaction.transaction_id || lastTransaction.id || 'N/A'}`, 105, 30, { align: 'center' });
     doc.text(`Date: ${new Date(lastTransaction.timestamp).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
@@ -98,13 +142,13 @@ const response = await fetch(`${process.env.REACT_APP_API_URL}/api/authorize`, {
     doc.text(`Card Type: ${lastTransaction.card_type}`, 20, 95);
     doc.text(`Amount: ₹${lastTransaction.amount.toFixed(2)}`, 20, 105);
     doc.text(`Status: ${lastTransaction.status.charAt(0).toUpperCase() + lastTransaction.status.slice(1)}`, 20, 115);
-    doc.text(`Card Hash: ${lastTransaction.card_hash}`, 20, 125);
+    doc.text(`Card Hash: ${lastTransaction.card_hash || 'N/A'}`, 20, 125);
 
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
     doc.text('Thank you for using SecurePay. For support, contact support@securepay.com.', 105, 270, { align: 'center' });
 
-    doc.save(`SecurePay_Receipt_${lastTransaction.id}.pdf`);
+    doc.save(`SecurePay_Receipt_${lastTransaction.transaction_id || lastTransaction.id || Date.now()}.pdf`);
   };
 
   return (
