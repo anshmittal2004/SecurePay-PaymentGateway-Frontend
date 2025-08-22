@@ -31,11 +31,16 @@ function TransactionForm({ onTransaction }) {
 
     try {
       console.log('Sending to backend:', { cardNumber, name, phoneNumber, amount }); // Debug
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardNumber, name, phoneNumber, amount })
-      });
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/authorize`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    card_number: cardNumber.replace(/\s/g, ''), // Remove spaces
+    name, 
+    phone_number: phoneNumber, 
+    amount: parseFloat(amount) 
+  })
+});
       const data = await response.json();
       onTransaction(data);
       setLastTransaction(data);
