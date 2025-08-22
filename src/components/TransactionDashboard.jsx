@@ -2,19 +2,22 @@ import React, { useState } from 'react';
 import { Shield, CheckCircle, XCircle, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 import { detectFraud } from '../utils/mockData';
 
-function TransactionDashboard({ transactions }) {
+function TransactionDashboard({ transactions = [] }) {  // ✅ Default empty array
   const [filter, setFilter] = useState('all');
 
-  const filteredTransactions = transactions.filter(tx => 
+  // ✅ Safe filter with fallback
+  const filteredTransactions = (transactions || []).filter(tx => 
     filter === 'all' || tx.status === filter
   );
 
+  // ✅ Safe stats calculation
+  const safeTransactions = transactions || [];
   const stats = {
-    total: transactions.length,
-    success: transactions.filter(tx => tx.status === 'success').length,
-    pending: transactions.filter(tx => tx.status === 'pending').length,
-    failed: transactions.filter(tx => tx.status === 'failed').length,
-    fraudulent: transactions.filter(tx => detectFraud(tx, transactions).isFraudulent).length
+    total: safeTransactions.length,
+    success: safeTransactions.filter(tx => tx.status === 'success').length,
+    pending: safeTransactions.filter(tx => tx.status === 'pending').length,
+    failed: safeTransactions.filter(tx => tx.status === 'failed').length,
+    fraudulent: safeTransactions.filter(tx => detectFraud(tx, safeTransactions).isFraudulent).length
   };
 
   const StatusIcon = ({ status }) => {
@@ -90,9 +93,9 @@ function TransactionDashboard({ transactions }) {
           </div>
         ) : (
           filteredTransactions.map((tx, index) => {
-            const fraudCheck = detectFraud(tx, transactions);
+            const fraudCheck = detectFraud(tx, safeTransactions);
             return (
-              <div key={tx.id} className="transaction-item" style={{ animationDelay: `${index * 0.1}s` }}>
+              <div key={tx.id || index} className="transaction-item" style={{ animationDelay: `${index * 0.1}s` }}>
                 <div className="transaction-left">
                   <StatusIcon status={tx.status} />
                   {fraudCheck.isFraudulent && (
@@ -102,22 +105,22 @@ function TransactionDashboard({ transactions }) {
                     </div>
                   )}
                   <div className="transaction-details">
-                    <div className="transaction-id">#{tx.id}</div>
-                    <div className="transaction-hash">{tx.name} ({tx.card_type}: {tx.card_number})</div>
-                    <div className="transaction-hash">Phone: {tx.phone_number}</div>
-                    <div className="transaction-hash">Hash: {tx.card_hash.slice(0, 10)}...</div>
+                    <div className="transaction-id">#{tx.id || 'N/A'}</div>
+                    <div className="transaction-hash">{tx.name || 'Unknown'} ({tx.card_type || 'Unknown'}: {tx.card_number || 'N/A'})</div>
+                    <div className="transaction-hash">Phone: {tx.phone_number || 'N/A'}</div>
+                    <div className="transaction-hash">Hash: {tx.card_hash ? tx.card_hash.slice(0, 10) + '...' : 'N/A'}</div>
                   </div>
                 </div>
                 <div className="transaction-right">
-                  <div className="transaction-amount">₹{tx.amount.toFixed(2)}</div>
-                  <div className="transaction-time">{new Date(tx.timestamp).toLocaleString('en-IN', {
+                  <div className="transaction-amount">₹{(tx.amount || 0).toFixed(2)}</div>
+                  <div className="transaction-time">{tx.timestamp ? new Date(tx.timestamp).toLocaleString('en-IN', {
                     timeZone: 'Asia/Kolkata',
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
-                  })}</div>
+                  }) : 'N/A'}</div>
                 </div>
               </div>
             );
