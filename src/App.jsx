@@ -8,28 +8,30 @@ function App() {
   const [transactions, setTransactions] = useState([]);
 
   const handleTransaction = (data) => {
-    // Unique ID generate 
-    const transactionWithId = {
-        ...data,
-        id: data.id || Date.now() + Math.random(),
-        timestamp: data.timestamp || new Date().toISOString()
-    };
+    const transactionId = `${data.phone}-${data.amount}-${Date.now()}`;
     
     setTransactions(prev => {
-        // Check 
-        const exists = prev.some(tx => 
-            tx.id === transactionWithId.id || 
-            (tx.phone === data.phone && tx.amount === data.amount && 
-             Math.abs(new Date(tx.timestamp) - new Date(transactionWithId.timestamp)) < 1000)
+        // Check if this exact transaction was just added (within last 2 seconds)
+        const isDuplicate = prev.some(tx => 
+            tx.phone === data.phone && 
+            tx.amount === data.amount &&
+            Math.abs(new Date() - new Date(tx.timestamp)) < 2000
         );
         
-        if (exists) {
-            return prev; // Duplicate
+        if (isDuplicate) {
+            return prev; // Don't add duplicate
         }
         
-        return [transactionWithId, ...prev];
+        const newTransaction = {
+            ...data,
+            id: transactionId,
+            timestamp: new Date().toISOString()
+        };
+        
+        return [newTransaction, ...prev];
     });
 };
+
 
   return (
     <div className="app">
