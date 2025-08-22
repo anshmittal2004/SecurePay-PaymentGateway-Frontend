@@ -8,7 +8,27 @@ function App() {
   const [transactions, setTransactions] = useState([]);
 
   const handleTransaction = (data) => {
-    setTransactions(prev => [data, ...prev]);
+    // Unique ID generate 
+    const transactionWithId = {
+        ...data,
+        id: data.id || Date.now() + Math.random(),
+        timestamp: data.timestamp || new Date().toISOString()
+    };
+    
+    setTransactions(prev => {
+        // Check 
+        const exists = prev.some(tx => 
+            tx.id === transactionWithId.id || 
+            (tx.phone === data.phone && tx.amount === data.amount && 
+             Math.abs(new Date(tx.timestamp) - new Date(transactionWithId.timestamp)) < 1000)
+        );
+        
+        if (exists) {
+            return prev; // Duplicate
+        }
+        
+        return [transactionWithId, ...prev];
+    });
 };
 
   return (
