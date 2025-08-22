@@ -8,12 +8,7 @@ function App() {
   const [transactions, setTransactions] = useState([]);
 
   const handleTransaction = (data) => {
-  if (data.type === 'refresh') {
-    setTransactions(data.transactions);
-  } else {
-    // Add new transaction
     setTransactions(prev => [data, ...prev]);
-  }
 };
 
   return (
